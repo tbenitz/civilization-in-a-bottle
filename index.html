@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Civilization in a Bottle</title>
+<meta name="theme-color" content="#071219" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="app">
+  <canvas id="world"></canvas>
+  <div class="vignette"></div><div class="grain"></div>
+
+  <div class="topbar">
+    <div class="brand"><div class="mark">◌</div><div><b>Civilization in a Bottle</b><span id="subtitle">A tiny world making its own history</span></div></div>
+    <div class="spacer"></div>
+    <button id="pauseBtn" class="glassbtn" title="Pause / resume">Ⅱ</button>
+    <select id="speedSelect" class="glassbtn" title="Simulation speed">
+      <option value="1">1×</option><option value="2">2×</option><option value="5">5×</option><option value="10">10×</option>
+      <option value="25">25×</option><option value="50">50×</option><option value="100">100×</option><option value="250">250×</option>
+      <option value="500">500×</option><option value="1000">1,000×</option><option value="2500">2,500×</option><option value="5000">5,000×</option><option value="10000">10,000×</option>
+    </select>
+    <button id="fitBtn" class="glassbtn" title="Recenter and fit the full bottle">Fit</button>
+    <button id="historyBtn" class="glassbtn">Chronicle</button>
+    <button id="settingsBtn" class="glassbtn">⚙</button>
+    <div class="pill status"><i id="aiDot" class="dot"></i><span id="aiStatus">Local mind</span></div>
+  </div>
+
+  <div id="inspect"><div class="inspectCard">
+    <h4 id="inspectName">Citizen</h4>
+    <p id="inspectMeta"></p>
+    <p id="inspectThought"></p>
+    <div class="meter"><i id="inspectMeter" style="width:50%"></i></div>
+  </div></div>
+
+  <div class="era"><b id="eraName">THE FIRST LIGHT</b><span id="eraYears">Year 1 —</span></div>
+
+  <div class="stats">
+    <div class="stat"><div class="k">Population</div><div id="pop" class="v">24</div><div id="popSub" class="sub">3 families</div></div>
+    <div class="stat"><div class="k">Food</div><div id="food" class="v">78%</div><div id="foodSub" class="sub">stable</div></div>
+    <div class="stat"><div class="k">Water</div><div id="water" class="v">91%</div><div id="waterSub" class="sub">healthy</div></div>
+    <div class="stat"><div class="k">Year</div><div id="year" class="v">1</div><div id="yearSub" class="sub">spring</div></div>
+  </div>
+
+  <div id="powers" class="panel">
+    <button data-power="observe" class="sel">◉ Observe</button>
+    <button data-power="rain">☂ Rain</button>
+    <button data-power="sun">☀ Sun</button>
+    <button data-power="food">✦ Food</button>
+    <button data-power="artifact">◆ Artifact</button>
+    <button data-power="fire">♨ Fire</button>
+    <button data-power="settler">＋ Settler</button>
+    <button data-power="custom">⌁ Custom event</button>
+  </div>
+  <div class="hint">drag = look · right/Shift-drag = move sideways/up/down · wheel = fly forward/back · WASD + Q/E = fly · double-click = inspect/focus · Fit = reset · <span class="kbd">space</span> pause</div>
+
+  <div id="chronicle" class="panel">
+    <div class="panelHead"><h2>The Chronicle</h2><div class="grow"></div><button id="closeHistory" class="x">×</button></div>
+    <div id="historyList"></div>
+    <div class="timeline">
+      <small id="timelineLabel">Live — Year 1</small>
+      <input id="timelineRange" type="range" min="0" max="0" value="0" step="1"/>
+    </div>
+  </div>
+
+  <div id="miniLog" class="miniLog"><div class="t">Latest event</div><b id="miniTitle">The First Fire</b><p id="miniText">A few families have settled beside the river.</p></div>
+  <div id="toast"></div>
+
+  <div id="settingsModal" class="modalWrap"><div class="modal">
+    <div class="panelHead" style="padding:0 0 12px"><h1 style="margin:0">World settings</h1><div class="grow"></div><button class="x" data-close="settingsModal">×</button></div>
+    <p>The simulation works without AI. Add a DeepSeek API key to let the civilization make strategic decisions, name eras, and narrate major events. The key is stored only in this browser's localStorage.</p>
+    <h3>DeepSeek</h3>
+    <label>API key</label><input id="apiKey" type="password" placeholder="sk-..." autocomplete="off"/>
+    <div class="row" style="margin-top:10px">
+      <div><label>Model</label><select id="modelSel"><option value="deepseek-chat">deepseek-chat</option><option value="deepseek-reasoner">deepseek-reasoner</option></select></div>
+      <div><label>AI decision interval (seconds)</label><input id="aiInterval" type="number" min="20" max="600" value="75"/></div>
+    </div>
+    <h3>World</h3>
+    <div class="row">
+      <div><label>Simulation detail</label><select id="detailSel"><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></div>
+      <div><label>Soundscape</label><select id="soundSel"><option value="off">Off</option><option value="on">On</option></select></div>
+    </div>
+    <div class="actions"><button id="resetBtn" class="secondary">Reset civilization</button><button id="saveSettings" class="primary">Save settings</button></div>
+  </div></div>
+
+  <div id="customModal" class="modalWrap"><div class="modal">
+    <div class="panelHead" style="padding:0 0 12px"><h1 style="margin:0">Intervene</h1><div class="grow"></div><button class="x" data-close="customModal">×</button></div>
+    <p>Describe something that suddenly becomes true. The simulation will record it; DeepSeek will see it during its next decision.</p>
+    <textarea id="customText" placeholder="A perfectly smooth black cube appears beside the river. It cannot be damaged..."></textarea>
+    <div class="actions"><button class="secondary" data-close="customModal">Cancel</button><button id="applyCustom" class="primary">Make it happen</button></div>
+  </div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
