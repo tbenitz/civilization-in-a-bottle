@@ -5,7 +5,107 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>Civilization in a Bottle</title>
 <meta name="theme-color" content="#071219" />
-<link rel="stylesheet" href="style.css" />
+<style>
+  :root{
+    --bg:#061016; --panel:rgba(7,18,24,.78); --line:rgba(255,255,255,.11);
+    --text:#e8f6f3; --muted:#8ba5a2; --a:#72ffd0; --b:#7cb7ff; --warn:#ffca72;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:
+    radial-gradient(circle at 50% 35%,#11333d 0,#07141c 42%,#02070a 100%);
+    color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  button,input,select,textarea{font:inherit}
+  button{color:inherit}
+  #app,#world{position:fixed;inset:0}
+  #world{touch-action:none;cursor:grab}
+  #world.dragging{cursor:grabbing}
+  .vignette{position:fixed;inset:0;pointer-events:none;z-index:4;background:
+    radial-gradient(circle at 50% 43%,transparent 30%,rgba(0,0,0,.12) 58%,rgba(0,0,0,.64) 120%)}
+  .grain{position:fixed;inset:0;pointer-events:none;z-index:5;opacity:.16;mix-blend-mode:soft-light;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.25'/%3E%3C/svg%3E")}
+  .topbar{position:fixed;left:18px;right:18px;top:16px;z-index:20;display:flex;align-items:center;gap:10px;pointer-events:none}
+  .brand{pointer-events:auto;display:flex;align-items:center;gap:12px;padding:9px 12px;border:1px solid var(--line);
+    background:rgba(4,13,18,.56);backdrop-filter:blur(16px);border-radius:18px;box-shadow:0 12px 40px rgba(0,0,0,.18)}
+  .mark{width:34px;height:34px;border-radius:12px;display:grid;place-items:center;background:
+    radial-gradient(circle at 45% 28%,#cffff0 0 5%,#5fe5ba 6% 18%,#126d72 40%,#09272c 72%);
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.22),0 0 30px rgba(81,255,203,.18)}
+  .brand b{font-size:13px;letter-spacing:.16em;text-transform:uppercase}
+  .brand span{display:block;color:var(--muted);font-size:10px;margin-top:1px}
+  .spacer{flex:1}
+  .glassbtn,.pill{pointer-events:auto;border:1px solid var(--line);background:rgba(4,13,18,.55);backdrop-filter:blur(16px);
+    border-radius:14px;padding:9px 11px;cursor:pointer;transition:.2s ease;box-shadow:0 12px 40px rgba(0,0,0,.14)}
+  .glassbtn:hover,.pill:hover{border-color:rgba(114,255,208,.38);background:rgba(11,31,39,.8);transform:translateY(-1px)}
+  .glassbtn.active{border-color:rgba(114,255,208,.55);box-shadow:0 0 0 1px rgba(114,255,208,.1) inset}
+  .status{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:7px}
+  .dot{width:7px;height:7px;border-radius:50%;background:#68817d;box-shadow:0 0 0 4px rgba(104,129,125,.08)}
+  .dot.live{background:var(--a);box-shadow:0 0 18px var(--a)}
+  .dot.thinking{background:var(--warn);box-shadow:0 0 18px var(--warn);animation:pulse 1s infinite}
+  @keyframes pulse{50%{opacity:.35}}
+  .stats{position:fixed;left:18px;bottom:18px;z-index:18;display:grid;grid-template-columns:repeat(4,minmax(88px,1fr));gap:8px;max-width:520px}
+  .stat{background:rgba(4,13,18,.48);border:1px solid var(--line);backdrop-filter:blur(14px);border-radius:16px;padding:10px 12px}
+  .stat .k{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .stat .v{font-size:20px;font-weight:700;margin-top:2px}
+  .stat .sub{font-size:9px;color:var(--muted)}
+  .panel{position:fixed;z-index:30;border:1px solid var(--line);background:rgba(4,13,18,.82);backdrop-filter:blur(22px);
+    box-shadow:0 24px 80px rgba(0,0,0,.38);border-radius:20px;overflow:hidden}
+  #chronicle{right:18px;top:78px;bottom:82px;width:min(350px,calc(100vw - 36px));display:flex;flex-direction:column;transform:translateX(calc(100% + 28px));transition:.28s ease}
+  #chronicle.open{transform:none}
+  .panelHead{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line)}
+  .panelHead h2{font-size:12px;letter-spacing:.14em;text-transform:uppercase;margin:0}
+  .panelHead .grow{flex:1}
+  .x{background:none;border:0;color:var(--muted);font-size:18px;cursor:pointer}
+  #historyList{padding:8px;overflow:auto;flex:1}
+  .event{padding:11px 12px;border-radius:14px;cursor:pointer;border:1px solid transparent;transition:.18s}
+  .event:hover{background:rgba(255,255,255,.035);border-color:var(--line)}
+  .event .year{font-size:9px;letter-spacing:.12em;color:var(--a);text-transform:uppercase}
+  .event b{font-size:12px;display:block;margin:3px 0}
+  .event p{font-size:11px;line-height:1.45;color:var(--muted);margin:0}
+  .timeline{border-top:1px solid var(--line);padding:12px 14px}
+  .timeline small{color:var(--muted);font-size:10px}
+  input[type=range]{width:100%;accent-color:#72ffd0}
+  #powers{left:50%;bottom:18px;transform:translateX(-50%);display:flex;align-items:center;gap:7px;padding:8px;max-width:calc(100vw - 36px);overflow:auto;z-index:22}
+  #powers button{white-space:nowrap;border:1px solid transparent;background:transparent;border-radius:12px;padding:8px 10px;color:var(--muted);cursor:pointer}
+  #powers button:hover{background:rgba(255,255,255,.05);color:var(--text)}
+  #powers button.sel{background:rgba(114,255,208,.1);border-color:rgba(114,255,208,.26);color:var(--a)}
+  #toast{position:fixed;z-index:50;left:50%;top:92px;transform:translate(-50%,-12px);opacity:0;pointer-events:none;
+    background:rgba(4,13,18,.9);border:1px solid var(--line);border-radius:14px;padding:10px 13px;font-size:11px;color:var(--text);
+    transition:.22s ease;max-width:min(560px,calc(100vw - 28px));text-align:center;box-shadow:0 18px 55px rgba(0,0,0,.34)}
+  #toast.show{transform:translate(-50%,0);opacity:1}
+  .modalWrap{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.52);backdrop-filter:blur(8px);display:none;place-items:center;padding:18px}
+  .modalWrap.open{display:grid}
+  .modal{width:min(620px,100%);max-height:min(780px,calc(100vh - 36px));overflow:auto;background:#07141b;border:1px solid rgba(255,255,255,.13);
+    border-radius:24px;box-shadow:0 34px 110px rgba(0,0,0,.58);padding:18px}
+  .modal h1{font-size:20px;margin:2px 0 6px}.modal h3{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:22px 0 8px}
+  .modal p{font-size:12px;color:var(--muted);line-height:1.55}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  label{font-size:10px;color:var(--muted);display:block;margin-bottom:5px}
+  input[type=text],input[type=password],input[type=number],select,textarea{width:100%;background:#0b2029;border:1px solid rgba(255,255,255,.1);border-radius:12px;color:var(--text);padding:10px 11px;outline:none}
+  input:focus,textarea:focus,select:focus{border-color:rgba(114,255,208,.48)}
+  textarea{min-height:100px;resize:vertical}
+  .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+  .primary{border:1px solid rgba(114,255,208,.28);background:rgba(114,255,208,.12);color:var(--a);padding:10px 13px;border-radius:12px;cursor:pointer}
+  .secondary{border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--text);padding:10px 13px;border-radius:12px;cursor:pointer}
+  #inspect{position:fixed;left:18px;top:78px;z-index:22;width:260px;pointer-events:none;opacity:0;transform:translateY(8px);transition:.22s}
+  #inspect.show{opacity:1;transform:none}
+  .inspectCard{background:rgba(4,13,18,.62);border:1px solid var(--line);backdrop-filter:blur(16px);border-radius:18px;padding:13px}
+  .inspectCard h4{margin:0 0 5px;font-size:13px}.inspectCard p{font-size:10px;color:var(--muted);margin:2px 0}
+  .meter{height:5px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin:7px 0}.meter i{display:block;height:100%;background:linear-gradient(90deg,#72ffd0,#7cb7ff)}
+  .hint{position:fixed;left:50%;bottom:77px;transform:translateX(-50%);z-index:14;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:rgba(220,245,240,.42);pointer-events:none}
+  .era{position:fixed;left:50%;top:19%;transform:translateX(-50%);z-index:15;text-align:center;pointer-events:none;opacity:.88}
+  .era b{display:block;font-size:11px;letter-spacing:.34em;text-transform:uppercase;text-shadow:0 2px 14px #000}
+  .era span{font-size:9px;letter-spacing:.14em;color:rgba(220,245,240,.46)}
+  .miniLog{position:fixed;right:18px;bottom:18px;width:min(330px,calc(100vw - 36px));z-index:16;background:rgba(4,13,18,.42);border:1px solid var(--line);backdrop-filter:blur(14px);border-radius:16px;padding:10px 12px}
+  .miniLog .t{font-size:9px;text-transform:uppercase;letter-spacing:.13em;color:var(--a)} .miniLog b{font-size:11px;display:block;margin:3px 0}.miniLog p{font-size:10px;color:var(--muted);margin:0;line-height:1.4}
+  .kbd{border:1px solid var(--line);border-bottom-color:rgba(255,255,255,.23);border-radius:6px;padding:1px 5px;font-size:9px;color:#b7cbc8;background:rgba(255,255,255,.04)}
+  @media(max-width:760px){
+    .stats{grid-template-columns:repeat(2,1fr);width:260px}
+    .miniLog{display:none}.brand span{display:none}.brand b{font-size:10px}
+    #powers{left:14px;right:14px;transform:none}
+    .hint{display:none}.row{grid-template-columns:1fr}
+    .topbar{left:10px;right:10px;top:10px}.stats{left:10px;bottom:68px}
+    #chronicle{right:10px;top:66px;bottom:66px}.era{top:15%}
+  }
+</style>
 </head>
 <body>
 <div id="app">
@@ -93,6 +193,744 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-<script src="app.js"></script>
+<script>
+(()=> {
+'use strict';
+
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const canvas=$('#world');
+const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const rand=(a,b)=>a+Math.random()*(b-a);
+const pick=a=>a[(Math.random()*a.length)|0];
+const now=()=>Date.now();
+
+const namesA=['Mara','Ilan','Sena','Tovin','Ari','Nela','Oren','Kira','Vale','Tess','Rian','Milo','Suri','Ansel','Ena','Cael','Lio','Mira','Niko','Rhea','Daro','Iris','Pax','Sol'];
+const namesB=['River','Ash','Stone','Vale','Reed','Ember','Hale','Moss','North','Dawn','Rowan','Lake','Field','Pine','Glass','Wren'];
+const thoughts=[
+  'Watching the river.', 'Thinking about tomorrow.', 'Carrying grain home.', 'Wondering what lies beyond the ridge.',
+  'Checking the new foundations.', 'Looking for someone.', 'Counting clouds.', 'Taking the long way home.',
+  'Planning a better roof.', 'Listening to the settlement.'
+];
+
+let settings={model:'deepseek-chat',aiInterval:75,detail:'high',sound:'off'};
+try{Object.assign(settings,JSON.parse(localStorage.getItem('civ.settings')||'{}'))}catch{}
+let apiKey=localStorage.getItem('civ.deepseekKey')||'';
+let saveTimer;
+
+let state={
+  version:3, created:Date.now(), year:1, day:1, season:0, speed:1, paused:false,
+  population:24, food:78, water:91, wood:65, stone:42, knowledge:8, morale:72,
+  houses:5, farms:2, wells:1, settlements:1, weather:'clear', rain:0, temp:18,
+  government:'informal council', era:'THE FIRST LIGHT', eraStart:1,
+  currentPower:'observe', artifact:false, crisis:null, aiCalls:0,
+  history:[], snapshots:[], pendingEvents:[], recentDecisions:[]
+};
+
+function toast(msg,ms=2600){
+  const t=$('#toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),ms);
+}
+function finiteNum(v,fallback,min=-Infinity,max=Infinity){
+  const n=Number(v); return Number.isFinite(n)?clamp(n,min,max):fallback;
+}
+function fmt(n){n=finiteNum(n,0);return Math.round(n).toLocaleString()}
+function sanitizeState(){
+  // Old/corrupt saves can contain null, strings, or values that became NaN at runtime.
+  const d={year:1,day:1,season:0,speed:1,population:24,food:78,water:91,wood:65,stone:42,knowledge:8,morale:72,houses:5,farms:2,wells:1,settlements:1,rain:0,temp:18,eraStart:1,aiCalls:0};
+  state.day=finiteNum(state.day,d.day,0,1e12);
+  state.year=Math.max(1,Math.floor(finiteNum(state.year,1,1,1e10)));
+  state.season=Math.floor(finiteNum(state.season,0,0,3));
+  state.speed=finiteNum(state.speed,1,1,10000);
+  state.population=Math.max(1,Math.round(finiteNum(state.population,d.population,1,1e9)));
+  for(const k of ['food','water','wood','stone','knowledge','morale']) state[k]=finiteNum(state[k],d[k],0,100);
+  for(const k of ['houses','farms','wells','settlements']) state[k]=Math.max(k==='settlements'?1:0,Math.round(finiteNum(state[k],d[k],0,1e7)));
+  state.rain=finiteNum(state.rain,0,0,1); state.temp=finiteNum(state.temp,18,-100,100);
+  state.eraStart=Math.max(1,Math.floor(finiteNum(state.eraStart,state.year,1,1e10)));
+  state.aiCalls=Math.max(0,Math.floor(finiteNum(state.aiCalls,0,0,1e9)));
+  if(!Array.isArray(state.history))state.history=[]; if(!Array.isArray(state.snapshots))state.snapshots=[];
+  if(!Array.isArray(state.pendingEvents))state.pendingEvents=[]; if(!Array.isArray(state.recentDecisions))state.recentDecisions=[];
+  if(typeof state.era!=='string'||!state.era)state.era='THE FIRST LIGHT';
+  if(typeof state.government!=='string'||!state.government)state.government='informal council';
+  if(!['clear','rain'].includes(state.weather))state.weather='clear';
+  if(!['observe','rain','sun','food','artifact','fire','settler','custom'].includes(state.currentPower))state.currentPower='observe';
+  // Day is authoritative; keep year/season synchronized so malformed saves self-heal.
+  state.year=1+Math.floor(state.day/365);
+  state.season=Math.floor((state.day%365)/91.25)%4;
+}
+function seasonName(){return ['spring','summer','autumn','winter'][Math.floor(finiteNum(state.season,0,0,3))]||'spring'}
+function addHistory(title,text,kind='world'){
+  const e={id:crypto.randomUUID?.()||String(Math.random()),year:state.year,day:Math.round(state.day),title,text,kind,ts:Date.now()};
+  state.history.unshift(e); state.history=state.history.slice(0,100);
+  state.pendingEvents.unshift({year:e.year,title:e.title,description:e.text}); state.pendingEvents=state.pendingEvents.slice(0,10);
+  $('#miniTitle').textContent=title; $('#miniText').textContent=text;
+  renderHistory(); scheduleSave();
+}
+function snap(){
+  const s={year:state.year,population:state.population,food:state.food,water:state.water,wood:state.wood,stone:state.stone,
+    knowledge:state.knowledge,morale:state.morale,houses:state.houses,farms:state.farms,wells:state.wells,era:state.era,
+    settlementCount:state.settlements,weather:state.weather};
+  state.snapshots.push(s); if(state.snapshots.length>160)state.snapshots.shift();
+  const r=$('#timelineRange'); r.max=Math.max(0,state.snapshots.length-1); r.value=r.max;
+}
+function newEra(name){
+  if(!name)return;
+  state.era=String(name).toUpperCase().replace(/^THE\s+/,'THE ');
+  state.eraStart=state.year;
+  $('#eraName').textContent=state.era; $('#eraYears').textContent='Year '+state.eraStart+' —';
+  addHistory(state.era,'A new historical era begins.','era');
+}
+
+addHistory('The First Fire','A few families have settled beside the river. No one yet knows what this place will become.','era');
+snap();
+
+function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveWorld,400)}
+function saveWorld(){try{localStorage.setItem('civ.world',JSON.stringify(state))}catch(e){}}
+function loadWorld(){
+  try{
+    const s=JSON.parse(localStorage.getItem('civ.world')||'null');
+    if(s&&s.version>=3){state=Object.assign(state,s);sanitizeState();return true}
+  }catch(e){console.warn('Could not restore world save',e)}
+  sanitizeState();
+  return false;
+}
+const hadSave=loadWorld();
+// Persist repaired values so a corrupt old save cannot re-infect the next session.
+scheduleSave();
+if(state.snapshots.length){const tr=$('#timelineRange');tr.max=state.snapshots.length-1;tr.value=tr.max;$('#timelineLabel').textContent=`Live — Year ${state.year}`}
+
+// ---------- THREE SCENE ----------
+if(!window.THREE){
+  document.body.innerHTML='<div style="padding:40px;color:white;font-family:system-ui"><h1>Three.js could not load.</h1><p>This page needs internet access for its 3D engine and for DeepSeek. Check the connection and reload.</p></div>';
+  return;
+}
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,settings.detail==='high'?1.8:1.2));
+renderer.setSize(innerWidth,innerHeight,false);
+renderer.outputEncoding=THREE.sRGBEncoding;
+renderer.shadowMap.enabled=settings.detail!=='low';
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.15;
+
+const scene=new THREE.Scene();
+scene.fog=new THREE.FogExp2(0x07131a,0.012);
+const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,.1,400);
+camera.position.set(0,18,35);
+
+const hemi=new THREE.HemisphereLight(0xbcefff,0x1b271c,1.35); scene.add(hemi);
+const sun=new THREE.DirectionalLight(0xfff0c2,2.6); sun.position.set(-18,30,16); sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048); sun.shadow.camera.left=-24;sun.shadow.camera.right=24;sun.shadow.camera.top=24;sun.shadow.camera.bottom=-24;scene.add(sun);
+const rim=new THREE.PointLight(0x6dfbe1,1.2,55); rim.position.set(12,11,-18); scene.add(rim);
+
+const worldRoot=new THREE.Group(); scene.add(worldRoot);
+const worldTilt=new THREE.Group(); worldRoot.add(worldTilt);
+
+// pedestal shadow
+const pedestal=new THREE.Mesh(new THREE.CylinderGeometry(11.2,12.4,1.2,64),new THREE.MeshStandardMaterial({color:0x071014,roughness:.65,metalness:.35}));
+pedestal.position.y=-8.7;pedestal.receiveShadow=true;worldTilt.add(pedestal);
+const ring=new THREE.Mesh(new THREE.TorusGeometry(10.7,.18,12,80),new THREE.MeshStandardMaterial({color:0x385d5a,emissive:0x133b38,emissiveIntensity:.8,metalness:.75,roughness:.2}));
+ring.rotation.x=Math.PI/2;ring.position.y=-8.08;worldTilt.add(ring);
+
+// terrain
+const terrainMat=new THREE.MeshStandardMaterial({color:0x365b3b,roughness:.95,metalness:0});
+const terrain=new THREE.Mesh(new THREE.CylinderGeometry(9.6,9.5,1.55,64),terrainMat);
+terrain.position.y=-7.2;terrain.receiveShadow=true;terrain.castShadow=true;worldTilt.add(terrain);
+
+// terrain rim darker
+const soil=new THREE.Mesh(new THREE.CylinderGeometry(9.62,9.62,.8,64),new THREE.MeshStandardMaterial({color:0x273526,roughness:1}));
+soil.position.y=-7.78;soil.receiveShadow=true;worldTilt.add(soil);
+
+// river ribbon made with boxes
+const river=new THREE.Group(); worldTilt.add(river);
+for(let i=0;i<24;i++){
+  const z=-8+i*.7, x=Math.sin(i*.53)*1.55;
+  const m=new THREE.Mesh(new THREE.BoxGeometry(2.4,.045,.9),new THREE.MeshPhysicalMaterial({color:0x2e9bb8,roughness:.1,metalness:.05,transparent:true,opacity:.82}));
+  m.position.set(x,-6.38,z*.78); m.rotation.y=-Math.cos(i*.53)*.34; river.add(m);
+}
+
+// bottle glass lathe
+const pts=[];
+[[10.6,-8.3],[10.9,-7.8],[11.15,-6.7],[11.2,7.2],[10.9,8.4],[9.6,9.7],[6.4,10.9],[4.0,11.5],[3.7,14.1]].forEach(([r,y])=>pts.push(new THREE.Vector2(r,y)));
+const bottleGeo=new THREE.LatheGeometry(pts,96);
+const bottleMat=new THREE.MeshPhysicalMaterial({color:0xa7fff1,transparent:true,opacity:.09,roughness:.06,metalness:0,side:THREE.DoubleSide,depthWrite:false});
+const bottle=new THREE.Mesh(bottleGeo,bottleMat); worldTilt.add(bottle);
+const lip=new THREE.Mesh(new THREE.TorusGeometry(3.85,.22,16,64),new THREE.MeshPhysicalMaterial({color:0xc5fff6,transparent:true,opacity:.25,roughness:.05}));
+lip.rotation.x=Math.PI/2;lip.position.y=14.1;worldTilt.add(lip);
+const cork=new THREE.Mesh(new THREE.CylinderGeometry(3.45,3.65,2.15,32),new THREE.MeshStandardMaterial({color:0x7e5731,roughness:1}));
+cork.position.y=15.15; cork.castShadow=true;worldTilt.add(cork);
+
+// glass highlights
+for(const x of [-8.8,8.9]){
+  const h=new THREE.Mesh(new THREE.CylinderGeometry(.06,.08,13,8),new THREE.MeshBasicMaterial({color:0xc7fff4,transparent:true,opacity:.18}));
+  h.position.set(x,1,Math.abs(x)*.08);h.rotation.z=x<0?-.08:.08;worldTilt.add(h);
+}
+
+// stars
+const starG=new THREE.BufferGeometry(), starN=settings.detail==='low'?350:900, starPos=new Float32Array(starN*3);
+for(let i=0;i<starN;i++){const r=rand(45,90),a=rand(0,Math.PI*2),b=rand(-1.1,1.1);starPos[i*3]=Math.cos(a)*r;starPos[i*3+1]=Math.sin(b)*r*.55+18;starPos[i*3+2]=Math.sin(a)*r}
+starG.setAttribute('position',new THREE.BufferAttribute(starPos,3));
+const stars=new THREE.Points(starG,new THREE.PointsMaterial({size:.12,color:0xbbeaff,transparent:true,opacity:.55}));scene.add(stars);
+
+// groups
+const treeGroup=new THREE.Group(), buildingGroup=new THREE.Group(), citizenGroup=new THREE.Group(), fxGroup=new THREE.Group(), cloudGroup=new THREE.Group();
+worldTilt.add(treeGroup,buildingGroup,citizenGroup,fxGroup,cloudGroup);
+
+function groundY(){return -6.35}
+function insideLand(x,z,r=8.6){return x*x+z*z<r*r}
+function randomLand(r=8.6){
+  for(let q=0;q<40;q++){const a=rand(0,Math.PI*2),rr=Math.sqrt(Math.random())*r;const x=Math.cos(a)*rr,z=Math.sin(a)*rr;if(Math.abs(x-Math.sin(((z/0.78)+8)/.7*.53)*1.55)>1.8)return{x,z}}
+  return{x:rand(-5,5),z:rand(-5,5)}
+}
+function makeTree(x,z,s=1){
+  const g=new THREE.Group();
+  const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.08*s,.11*s,.75*s,7),new THREE.MeshStandardMaterial({color:0x5b3d28,roughness:1}));
+  trunk.position.y=.37*s;
+  const crown=new THREE.Mesh(new THREE.ConeGeometry(.52*s,1.25*s,8),new THREE.MeshStandardMaterial({color:0x245c3f,roughness:.95}));
+  crown.position.y=1.15*s;crown.castShadow=true;
+  g.add(trunk,crown);g.position.set(x,groundY(),z);treeGroup.add(g);return g;
+}
+for(let i=0;i<(settings.detail==='low'?28:52);i++){const p=randomLand(9);if(Math.hypot(p.x-3,p.z-1)>2.8)makeTree(p.x,p.z,rand(.65,1.35))}
+
+function makeHouse(x,z,scale=1){
+  const g=new THREE.Group();
+  const wall=new THREE.Mesh(new THREE.BoxGeometry(1.45*scale,1.05*scale,1.3*scale),new THREE.MeshStandardMaterial({color:pick([0x8a7250,0x967958,0x77674e]),roughness:.9}));
+  wall.position.y=.52*scale;wall.castShadow=true;wall.receiveShadow=true;
+  const roof=new THREE.Mesh(new THREE.ConeGeometry(1.15*scale,.8*scale,4),new THREE.MeshStandardMaterial({color:pick([0x553c32,0x4a3b31,0x634336]),roughness:.95}));
+  roof.position.y=1.42*scale;roof.rotation.y=Math.PI/4;roof.castShadow=true;
+  const windowM=new THREE.MeshBasicMaterial({color:0xffcf78});
+  const win=new THREE.Mesh(new THREE.PlaneGeometry(.22*scale,.28*scale),windowM);win.position.set(0,.62*scale,.656*scale);
+  g.add(wall,roof,win);g.position.set(x,groundY(),z);buildingGroup.add(g);return g;
+}
+const townSpots=[[3,1],[4.3,1.8],[2.2,2.6],[4.7,-.1],[2.4,-.5],[5.3,2.8],[1.1,3.3],[5.7,.9],[3.7,3.8],[.8,1.1]];
+function syncBuildings(){
+  const visualCap=settings.detail==='low'?30:settings.detail==='medium'?48:72;
+  const target=Math.min(visualCap,Math.max(0,Math.round(state.houses)));
+  while(buildingGroup.children.length<target){
+    const i=buildingGroup.children.length,p=townSpots[i]||randomLand(7);
+    makeHouse(p[0]??p.x,p[1]??p.z,rand(.62,1.02));
+  }
+  while(buildingGroup.children.length>target)buildingGroup.remove(buildingGroup.children[buildingGroup.children.length-1]);
+}
+syncBuildings();
+
+// farm plots
+const farmGroup=new THREE.Group();worldTilt.add(farmGroup);
+function syncFarms(){
+  const visualCap=settings.detail==='low'?6:settings.detail==='medium'?10:14;
+  const target=Math.min(visualCap,Math.max(0,Math.round(state.farms)));
+  while(farmGroup.children.length<target){
+    const i=farmGroup.children.length;
+    const g=new THREE.Group();
+    const base=new THREE.Mesh(new THREE.BoxGeometry(2.1,.05,1.35),new THREE.MeshStandardMaterial({color:0x57452c,roughness:1}));base.position.y=.025;g.add(base);
+    for(let r=0;r<6;r++){const row=new THREE.Mesh(new THREE.BoxGeometry(.07,.08,1.18),new THREE.MeshStandardMaterial({color:0x6f963f,roughness:1}));row.position.set(-.87+r*.35,.08,0);g.add(row)}
+    const p=randomLand(7.5);g.position.set(p.x,groundY(),p.z);g.rotation.y=rand(-.5,.5);farmGroup.add(g);
+  }
+  while(farmGroup.children.length>target)farmGroup.remove(farmGroup.children[farmGroup.children.length-1]);
+}
+syncFarms();
+
+function makeCitizen(){
+  const g=new THREE.Group();
+  const hue=rand(.05,.16);
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(.12,.17,.55,7),new THREE.MeshStandardMaterial({color:new THREE.Color().setHSL(hue,.34,.45),roughness:.8}));
+  body.position.y=.33; body.castShadow=true;
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.13,10,8),new THREE.MeshStandardMaterial({color:0xb88b6a,roughness:.9}));head.position.y=.72;head.castShadow=true;
+  g.add(body,head);
+  const p=randomLand(7.6);g.position.set(p.x,groundY(),p.z);
+  g.userData={type:'citizen',name:pick(namesA)+' '+pick(namesB),age:Math.round(rand(16,65)),mood:Math.round(rand(45,95)),thought:pick(thoughts),
+    tx:p.x,tz:p.z,speed:rand(.0018,.0042),phase:rand(0,10),job:pick(['farmer','builder','forager','keeper','maker','teacher'])};
+  citizenGroup.add(g);return g;
+}
+function desiredVisiblePop(){const cap=settings.detail==='low'?35:settings.detail==='medium'?58:82;return Math.max(8,Math.min(cap,Math.round(state.population/Math.max(1,state.population/cap))))}
+function syncCitizens(){
+  const target=desiredVisiblePop();
+  while(citizenGroup.children.length<target)makeCitizen();
+  while(citizenGroup.children.length>target)citizenGroup.remove(citizenGroup.children[citizenGroup.children.length-1]);
+}
+syncCitizens();
+
+// artifact
+const artifactMesh=new THREE.Mesh(new THREE.BoxGeometry(.82,.82,.82),new THREE.MeshPhysicalMaterial({color:0x030507,metalness:.92,roughness:.08,emissive:0x052426,emissiveIntensity:.8}));
+artifactMesh.position.set(-2.2,groundY()+.41,-1.5);artifactMesh.rotation.y=.4;artifactMesh.visible=!!state.artifact;artifactMesh.userData={type:'artifact',name:'The Black Cube'};worldTilt.add(artifactMesh);
+
+// clouds
+for(let c=0;c<6;c++){
+  const g=new THREE.Group();
+  for(let k=0;k<5;k++){const s=new THREE.Mesh(new THREE.SphereGeometry(rand(.5,1.1),12,8),new THREE.MeshLambertMaterial({color:0xcfe3e3,transparent:true,opacity:.45}));s.scale.y=.55;s.position.set(k*.65+rand(-.2,.2),rand(-.12,.18),rand(-.3,.3));g.add(s)}
+  g.position.set(rand(-10,10),rand(5.5,10),rand(-9,9));g.userData.speed=rand(.0006,.0013);cloudGroup.add(g);
+}
+
+// rain points
+const rainCount=settings.detail==='low'?300:700, rainGeo=new THREE.BufferGeometry(), rainPos=new Float32Array(rainCount*3);
+for(let i=0;i<rainCount;i++){rainPos[i*3]=rand(-10,10);rainPos[i*3+1]=rand(-4,11);rainPos[i*3+2]=rand(-10,10)}
+rainGeo.setAttribute('position',new THREE.BufferAttribute(rainPos,3));
+const rainPts=new THREE.Points(rainGeo,new THREE.PointsMaterial({color:0x88caff,size:.055,transparent:true,opacity:.58}));rainPts.visible=false;worldTilt.add(rainPts);
+
+// fire
+const fireLight=new THREE.PointLight(0xff7b2f,0,8);fireLight.position.set(0,groundY()+1,0);worldTilt.add(fireLight);
+const fireGeo=new THREE.BufferGeometry(), firePos=new Float32Array(120*3);fireGeo.setAttribute('position',new THREE.BufferAttribute(firePos,3));
+const firePts=new THREE.Points(fireGeo,new THREE.PointsMaterial({color:0xff9b45,size:.13,transparent:true,opacity:.85}));firePts.visible=false;worldTilt.add(firePts);
+let fireUntil=0;
+
+// TRUE FREE-FLY CAMERA
+// There is deliberately no permanent target / orbit center.
+// The camera has its own position + yaw/pitch and can travel anywhere.
+camera.near=.025;
+camera.far=1200;
+camera.rotation.order='YXZ';
+camera.updateProjectionMatrix();
+
+const view={
+  yaw:0,
+  pitch:0,
+  drag:false,
+  mode:'look',
+  x:0,
+  y:0,
+  moved:0,
+  keys:Object.create(null)
+};
+
+function applyCameraRotation(){
+  camera.rotation.y=view.yaw;
+  camera.rotation.x=view.pitch;
+  camera.rotation.z=0;
+}
+
+function lookAtPoint(point){
+  const dir=new THREE.Vector3().subVectors(point,camera.position).normalize();
+  // Three.js cameras face -Z when yaw/pitch are zero.
+  view.yaw=Math.atan2(-dir.x,-dir.z);
+  view.pitch=Math.asin(clamp(dir.y,-1,1));
+  applyCameraRotation();
+}
+
+function fitBottle(){
+  // One-time reset pose only. Nothing remains tethered to this point afterward.
+  const center=new THREE.Vector3(0,3.65,0);
+  const vFov=THREE.MathUtils.degToRad(camera.fov);
+  const hFov=2*Math.atan(Math.tan(vFov/2)*Math.max(.15,camera.aspect));
+  const halfH=13.35,halfW=12.1;
+  const needV=halfH/Math.tan(vFov/2);
+  const needH=halfW/Math.tan(hFov/2);
+  const d=Math.max(31,Math.max(needV,needH)*1.1);
+  camera.position.set(0,3.65,d);
+  lookAtPoint(center);
+}
+
+function cameraBasis(){
+  const forward=new THREE.Vector3();
+  camera.getWorldDirection(forward).normalize();
+  const right=new THREE.Vector3().crossVectors(forward,camera.up).normalize();
+  const up=new THREE.Vector3().crossVectors(right,forward).normalize();
+  return {forward,right,up};
+}
+
+function truckCamera(dx,dy){
+  // Move the actual camera, not an orbit target.
+  const {right,up}=cameraBasis();
+  const distance=Math.max(2,camera.position.length());
+  const scale=clamp(distance*.00105,.0025,.065);
+  camera.position.addScaledVector(right,-dx*scale);
+  camera.position.addScaledVector(up,dy*scale);
+}
+
+function dollyCamera(wheelDelta){
+  // Move along whatever direction the camera is looking.
+  // No center point, minimum radius, or bottle lock.
+  const {forward}=cameraBasis();
+  const distance=Math.max(1.5,camera.position.length());
+  const step=wheelDelta*clamp(distance*.0016,.003,.18);
+  camera.position.addScaledVector(forward,-step);
+}
+
+function flyCamera(dt){
+  if(/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName||''))return;
+  const {forward,right}=cameraBasis();
+
+  // For WASD, retain full 3D forward so looking down and pressing W really flies down.
+  let amount=(view.keys.ShiftLeft||view.keys.ShiftRight?0.026:0.0095)*dt;
+  // Slow down automatically when very close to the origin for fine inspection.
+  amount*=clamp(camera.position.length()/12,.28,4.5);
+
+  const move=new THREE.Vector3();
+  if(view.keys.KeyW)move.add(forward);
+  if(view.keys.KeyS)move.sub(forward);
+  if(view.keys.KeyD)move.add(right);
+  if(view.keys.KeyA)move.sub(right);
+  if(view.keys.KeyE)move.y+=1;
+  if(view.keys.KeyQ)move.y-=1;
+
+  if(move.lengthSq()>0){
+    move.normalize().multiplyScalar(amount);
+    camera.position.add(move);
+  }
+}
+
+fitBottle();
+
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+
+canvas.addEventListener('pointerdown',e=>{
+  view.drag=true;
+  // Left drag = look around from current location.
+  // Right/middle/Shift-left = translate current camera.
+  view.mode=(e.button===2||e.button===1||e.shiftKey)?'truck':'look';
+  view.x=e.clientX;
+  view.y=e.clientY;
+  view.moved=0;
+  try{canvas.setPointerCapture(e.pointerId)}catch{}
+  canvas.classList.add('dragging');
+});
+
+addEventListener('pointerup',e=>{
+  view.drag=false;
+  try{canvas.releasePointerCapture(e.pointerId)}catch{}
+  canvas.classList.remove('dragging');
+});
+
+addEventListener('pointermove',e=>{
+  if(!view.drag)return;
+  const dx=e.clientX-view.x,dy=e.clientY-view.y;
+  view.moved+=Math.abs(dx)+Math.abs(dy);
+
+  if(view.mode==='truck'){
+    truckCamera(dx,dy);
+  }else{
+    view.yaw-=dx*.0056;
+    view.pitch=clamp(view.pitch-dy*.0048,-1.553,1.553);
+    applyCameraRotation();
+  }
+  view.x=e.clientX;
+  view.y=e.clientY;
+});
+
+canvas.addEventListener('wheel',e=>{
+  e.preventDefault();
+  dollyCamera(e.deltaY);
+},{passive:false});
+
+addEventListener('keydown',e=>{
+  if(/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName||''))return;
+  if(['KeyW','KeyA','KeyS','KeyD','KeyQ','KeyE','ShiftLeft','ShiftRight'].includes(e.code)){
+    view.keys[e.code]=true;
+    e.preventDefault();
+  }
+});
+
+addEventListener('keyup',e=>{
+  if(e.code in view.keys)view.keys[e.code]=false;
+});
+
+canvas.addEventListener('dblclick',e=>{
+  const hit=pickObject(e);
+  if(!hit)return;
+
+  // Move toward the clicked point but DO NOT create a persistent target.
+  const target=hit.point.clone();
+  const dir=new THREE.Vector3().subVectors(camera.position,target);
+  const currentDistance=Math.max(.001,dir.length());
+  dir.normalize();
+  const wanted=Math.min(5.5,Math.max(.65,currentDistance*.18));
+  camera.position.copy(target).addScaledVector(dir,wanted);
+  lookAtPoint(target);
+  toast('Moved to that spot. You are still completely free to fly from here.',1700);
+});
+
+// raycast
+const ray=new THREE.Raycaster(), mouse=new THREE.Vector2();
+function pickObject(e){
+  const r=canvas.getBoundingClientRect();mouse.x=((e.clientX-r.left)/r.width)*2-1;mouse.y=-((e.clientY-r.top)/r.height)*2+1;
+  ray.setFromCamera(mouse,camera);
+  const hits=ray.intersectObjects([terrain,...citizenGroup.children,artifactMesh],true);
+  return hits[0];
+}
+canvas.addEventListener('click',e=>{
+  if(view.moved>6){view.moved=0;return;}
+  view.moved=0;
+  const hit=pickObject(e);if(!hit)return;
+  let obj=hit.object;while(obj.parent&&obj.parent!==worldTilt&&obj.parent!==citizenGroup&&obj!==terrain)obj=obj.parent;
+  if(state.currentPower==='observe'){
+    let c=hit.object;while(c&&c.parent!==citizenGroup)c=c.parent;
+    if(c&&c.userData.type==='citizen')inspectCitizen(c);
+    else if(hit.object===artifactMesh||hit.object.parent===artifactMesh)inspectArtifact();
+    return;
+  }
+  applyPower(state.currentPower,hit.point);
+});
+
+function inspectCitizen(c){
+  const d=c.userData;$('#inspectName').textContent=d.name;$('#inspectMeta').textContent=`${d.age} years · ${d.job} · mood ${d.mood}%`;$('#inspectThought').textContent='“'+d.thought+'”';$('#inspectMeter').style.width=d.mood+'%';$('#inspect').classList.add('show');
+  clearTimeout(inspectCitizen._t);inspectCitizen._t=setTimeout(()=>$('#inspect').classList.remove('show'),5200);
+}
+function inspectArtifact(){
+  $('#inspectName').textContent='The Black Cube';$('#inspectMeta').textContent='Origin unknown · damage impossible';$('#inspectThought').textContent='No one agrees on what it is for.';$('#inspectMeter').style.width='100%';$('#inspect').classList.add('show');
+}
+
+function applyPower(p,point){
+  const pos={x:clamp(point.x,-8,8),z:clamp(point.z,-8,8)};
+  if(p==='rain'){state.rain=1;state.weather='rain';state.water=clamp(state.water+12,0,100);addHistory('The Sudden Rain','Rain arrives without warning. Reservoirs and fields begin to recover.','god');toast('Rain falls over the bottle.')}
+  if(p==='sun'){state.rain=0;state.weather='clear';state.food=clamp(state.food+3,0,100);state.morale=clamp(state.morale+5,0,100);addHistory('The Bright Day','Clouds break apart and an unusually warm light reaches the settlement.','god');toast('The sky clears.')}
+  if(p==='food'){state.food=clamp(state.food+22,0,100);addHistory('The Gift of Grain','Fresh grain appears where there was none. No one can explain it.','god');toast('Food stores rise.')}
+  if(p==='artifact'){state.artifact=true;artifactMesh.visible=true;artifactMesh.position.set(pos.x,groundY()+.41,pos.z);addHistory('The Arrival','A perfectly dark cube appears. Tools leave no mark on its surface.','god');toast('The artifact has entered history.')}
+  if(p==='fire'){fireUntil=now()+14000;fireLight.position.set(pos.x,groundY()+1,pos.z);firePts.position.set(pos.x,groundY(),pos.z);state.food=clamp(state.food-5,0,100);state.wood=clamp(state.wood-8,0,100);addHistory('A Fire Breaks Out','Flame spreads through dry ground near the settlement.','god');toast('Fire! The settlement reacts.')}
+  if(p==='settler'){state.population+=5;syncCitizens();addHistory('The Five Strangers','Five travelers arrive together and ask to stay.','god');toast('Five settlers joined the population.')}
+  scheduleSave();
+}
+
+// ---------- SIMULATION ----------
+let last=performance.now(), simCarry=0, lastYear=state.year, lastAi=Date.now();
+function yearlyStep(emitEvents=true){
+  const capacity=Math.max(28,state.houses*8+state.farms*9+state.wells*14);
+  const birthRate=(state.food/100)*(state.water/100)*(state.morale/100)*.035;
+  const pressure=Math.max(0,(state.population-capacity)/Math.max(1,capacity));
+  const deaths=(.012+pressure*.05+(state.food<25?.05:0)+(state.water<25?.06:0));
+  state.population=Math.max(6,Math.round(state.population*(1+birthRate-deaths)));
+  state.knowledge=clamp(state.knowledge+rand(.8,2.5),0,100);
+  if(state.population>state.houses*6&&state.wood>18){state.houses++;state.wood-=12;if(emitEvents)addHistory('A New Roof','Another home is raised as the settlement grows.','build')}
+  if(state.food<54&&state.wood>12&&state.farms<20){state.farms++;state.wood-=8;if(emitEvents)addHistory('New Fields','More ground is turned over for crops.','build')}
+  if(state.water<55&&state.stone>10){state.wells++;state.stone-=7;state.water=clamp(state.water+9,0,100);if(emitEvents)addHistory('A Deeper Well','Workers dig below the old water line.','build')}
+}
+function macroYears(years){
+  if(years<=0)return;
+  // At extreme speeds, model centuries in aggregate instead of executing thousands of DOM/event updates.
+  const stability=clamp((state.food+state.water+state.morale)/300,.08,1);
+  const infrastructureGrowth=Math.min(50000,Math.floor(years*(.025+.16*stability)));
+  state.houses=Math.min(1e7,state.houses+Math.floor(infrastructureGrowth*.52));
+  state.farms=Math.min(1e7,state.farms+Math.floor(infrastructureGrowth*.22));
+  state.wells=Math.min(1e7,state.wells+Math.floor(infrastructureGrowth*.10));
+  const capacity=Math.max(28,state.houses*8+state.farms*9+state.wells*14);
+  const annualGrowth=(stability-.43)*.017;
+  const factor=Math.exp(clamp(annualGrowth*years,-6,6));
+  state.population=Math.max(6,Math.min(1e9,Math.round(state.population*factor),Math.round(capacity*1.18)));
+  state.knowledge=clamp(state.knowledge+years*.32,0,100);
+  const settleTarget=clamp(55+stability*40-state.population/Math.max(1,capacity)*12,8,96);
+  const blend=1-Math.exp(-years/28);
+  state.food=clamp(lerp(state.food,settleTarget,blend),0,100);
+  state.water=clamp(lerp(state.water,clamp(settleTarget+5,0,100),blend),0,100);
+  state.wood=clamp(lerp(state.wood,60,blend*.7),0,100); state.stone=clamp(lerp(state.stone,58,blend*.7),0,100);
+  state.morale=clamp(lerp(state.morale,clamp(52+stability*30,0,100),blend),0,100);
+}
+function simulate(dt){
+  if(state.paused)return;
+  sanitizeState();
+  const scale=finiteNum(state.speed,1,1,10000);
+  const oldYear=state.year;
+  const scaledMs=dt*scale;
+  state.day=finiteNum(state.day + scaledMs*.00012*365,state.day,0,1e12);
+  const targetYear=1+Math.floor(state.day/365);
+  const yearsPassed=Math.max(0,targetYear-oldYear);
+  state.season=Math.floor((state.day%365)/91.25)%4;
+  if(yearsPassed){
+    // Keep normal/medium speeds richly simulated; switch to aggregate math for large jumps.
+    const detailed=Math.min(yearsPassed,12);
+    for(let i=0;i<detailed;i++)yearlyStep(yearsPassed<=4);
+    if(yearsPassed>detailed)macroYears(yearsPassed-detailed);
+    state.year=targetYear;
+    snap();syncBuildings();syncFarms();syncCitizens();
+    if(state.year%8===0 && !apiKey && yearsPassed<=12)autoEra();
+  } else state.year=targetYear;
+
+  // Resource drift. Limit the numerical integration window at huge speeds; macroYears handles the rest.
+  const resourceMs=Math.min(scaledMs,45000);
+  const seasonFood=[.55,1.15,.72,.18][state.season]??.55;
+  state.food=clamp(state.food + resourceMs*.000018*(state.farms*seasonFood*4-state.population*.12),0,100);
+  state.water=clamp(state.water + resourceMs*.000012*((state.weather==='rain'?18:0)+state.wells*1.5-state.population*.075),0,100);
+  state.wood=clamp(state.wood+resourceMs*.000006*(2.3-state.houses*.04),0,100);
+  state.stone=clamp(state.stone+resourceMs*.000003*1.2,0,100);
+  if(state.food<20||state.water<20)state.morale=clamp(state.morale-resourceMs*.00002,0,100);else state.morale=clamp(state.morale+resourceMs*.000004,0,100);
+
+  if(state.weather==='rain'&&Math.random()<Math.min(.18,dt*.000003*scale)){state.weather='clear';state.rain=0}
+  if(state.weather==='clear'&&Math.random()<Math.min(.05,dt*.0000007*scale)){state.weather='rain';state.rain=1}
+  state.rain=lerp(state.rain,state.weather==='rain'?1:0,.02);
+  sanitizeState();
+  simCarry+=dt;
+  if(simCarry>350){simCarry=0;updateUI();scheduleSave()}
+}
+function autoEra(){
+  const options=state.food<35?['THE LEAN YEARS','THE HUNGRY SEASON']:state.population>90?['THE SECOND EXPANSION','THE MANY ROOFS']:state.knowledge>55?['THE AGE OF QUESTIONS','THE MAKERS’ ERA']:['THE RIVER YEARS','THE GREEN YEARS','THE QUIET BUILDING'];
+  newEra(pick(options));
+}
+function updateUI(){
+  $('#pop').textContent=fmt(state.population);$('#food').textContent=Math.round(state.food)+'%';$('#water').textContent=Math.round(state.water)+'%';$('#year').textContent=state.year;
+  $('#popSub').textContent=`${state.houses} homes · ${state.settlements} settlement${state.settlements===1?'':'s'}`;
+  $('#foodSub').textContent=state.food<25?'critical':state.food<50?'strained':state.food>80?'abundant':'stable';
+  $('#waterSub').textContent=state.water<25?'critical':state.water<50?'low':state.water>80?'healthy':'adequate';
+  $('#yearSub').textContent=seasonName();
+  $('#eraName').textContent=state.era;$('#eraYears').textContent=`Year ${state.eraStart} —`;
+}
+updateUI();
+
+function animateCitizens(t,dt){
+  const speed=state.paused?0:state.speed;
+  for(const c of citizenGroup.children){
+    const d=c.userData;
+    if(Math.hypot(c.position.x-d.tx,c.position.z-d.tz)<.25||Math.random()<.00035*dt*speed){
+      const p=randomLand(7.5);d.tx=p.x;d.tz=p.z;if(Math.random()<.2)d.thought=pick(thoughts);
+    }
+    const dx=d.tx-c.position.x,dz=d.tz-c.position.z,dist=Math.hypot(dx,dz)||1;
+    c.position.x+=dx/dist*d.speed*dt*speed;c.position.z+=dz/dist*d.speed*dt*speed;
+    c.rotation.y=Math.atan2(dx,dz);
+    c.position.y=groundY()+Math.sin(t*.006+d.phase)*.025;
+  }
+}
+function animateRain(dt){
+  rainPts.visible=state.rain>.08;rainPts.material.opacity=.55*state.rain;
+  const a=rainGeo.attributes.position.array;
+  for(let i=0;i<rainCount;i++){a[i*3+1]-=.02*dt;if(a[i*3+1]<-6.1)a[i*3+1]=rand(6,11)}
+  rainGeo.attributes.position.needsUpdate=true;
+}
+function animateFire(t){
+  const on=now()<fireUntil;firePts.visible=on;fireLight.intensity=on?2.3+Math.sin(t*.02)*.5:0;if(!on)return;
+  const a=fireGeo.attributes.position.array;
+  for(let i=0;i<120;i++){const k=i*3,phase=(t*.002+i*.31)%1;a[k]=rand(-.45,.45)*(1-phase*.6);a[k+1]=phase*2.2;a[k+2]=rand(-.45,.45)*(1-phase*.6)}
+  fireGeo.attributes.position.needsUpdate=true;
+}
+function lighting(t){
+  const dayFrac=(state.day%365)%1;
+  const cyc=(Math.sin(dayFrac*Math.PI*2-Math.PI/2)+1)/2;
+  const daylight=.22+.78*cyc;
+  sun.intensity=2.9*daylight;hemi.intensity=.45+1.1*daylight;rim.intensity=.75+(1-daylight)*1.1;
+  renderer.toneMappingExposure=.78+.46*daylight;
+  stars.material.opacity=.15+(1-daylight)*.75;
+  const c=new THREE.Color().lerpColors(new THREE.Color(0x23354a),new THREE.Color(0x07131a),daylight);
+  scene.fog.color.copy(c);
+}
+function animate(t){
+  requestAnimationFrame(animate);const dt=Math.min(45,t-last||16);last=t;
+  simulate(dt);animateCitizens(t,dt);animateRain(dt);animateFire(t);lighting(t);
+  flyCamera(dt);
+  cloudGroup.children.forEach((c,i)=>{c.position.x+=c.userData.speed*dt*(state.paused?0:state.speed);if(c.position.x>12)c.position.x=-12;c.position.y+=Math.sin(t*.0004+i)*.0005*dt});
+  artifactMesh.rotation.y+=.0002*dt;artifactMesh.position.y=groundY()+.45+Math.sin(t*.0015)*.08;
+  renderer.render(scene,camera);
+}
+requestAnimationFrame(animate);
+
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight,false)});
+
+// ---------- AI ----------
+function setAI(status,mode=''){
+  $('#aiStatus').textContent=status;$('#aiDot').className='dot '+mode;
+}
+function statePacket(){
+  return {
+    year:state.year,season:seasonName(),population:state.population,food:Math.round(state.food),water:Math.round(state.water),
+    wood:Math.round(state.wood),stone:Math.round(state.stone),knowledge:Math.round(state.knowledge),morale:Math.round(state.morale),
+    houses:state.houses,farms:state.farms,wells:state.wells,settlements:state.settlements,government:state.government,
+    era:state.era,artifactPresent:state.artifact,weather:state.weather,recentEvents:state.pendingEvents.slice(0,6),
+    recentDecisions:state.recentDecisions.slice(0,4)
+  };
+}
+function extractJSON(txt){
+  txt=String(txt||'').trim().replace(/^```(?:json)?/i,'').replace(/```$/,'').trim();
+  const a=txt.indexOf('{'),b=txt.lastIndexOf('}');if(a>=0&&b>a)txt=txt.slice(a,b+1);
+  return JSON.parse(txt);
+}
+async function askDeepSeek(force=false){
+  if(!apiKey){setAI('Local mind');return}
+  if(!force && Date.now()-lastAi<settings.aiInterval*1000)return;
+  lastAi=Date.now();setAI('DeepSeek thinking','thinking');
+  const packet=statePacket();
+  const system=`You are the strategic mind and historian of a tiny simulated civilization. You do not control individuals. Make plausible high-level decisions from the supplied state. Preserve continuity. Return ONLY valid JSON:
+{
+ "decisions":[{"action":"build_house|build_farm|dig_well|ration_food|plant_trees|explore|celebrate|study_artifact|none","amount":number,"reason":"short"}],
+ "event":{"title":"2-6 words","description":"1-2 atmospheric sentences"},
+ "era":{"change":false,"name":"THE ..."},
+ "government":"optional short form"
+}
+Use at most 3 decisions. Do not invent state changes outside the allowed actions. If an unexplained god-event occurred, react to it rather than explaining it.`;
+  try{
+    const res=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+      body:JSON.stringify({model:settings.model,messages:[{role:'system',content:system},{role:'user',content:JSON.stringify(packet)}],temperature:.8,max_tokens:700,stream:false})});
+    if(!res.ok)throw new Error('DeepSeek '+res.status+': '+(await res.text()).slice(0,180));
+    const data=await res.json(), obj=extractJSON(data.choices?.[0]?.message?.content);
+    applyAIDecision(obj);state.aiCalls++;state.pendingEvents=[];setAI('DeepSeek live','live');
+  }catch(e){
+    console.error(e);setAI('AI unavailable');toast('DeepSeek call failed: '+e.message,4200);
+  }
+}
+function applyAIDecision(obj){
+  const ds=Array.isArray(obj.decisions)?obj.decisions.slice(0,3):[];
+  for(const d of ds){
+    const a=d.action;
+    if(a==='build_house'&&state.wood>=10){state.houses++;state.wood-=10;syncBuildings()}
+    if(a==='build_farm'&&state.wood>=8){state.farms++;state.wood-=8;syncFarms()}
+    if(a==='dig_well'&&state.stone>=7){state.wells++;state.stone-=7;state.water=clamp(state.water+10,0,100)}
+    if(a==='ration_food'){state.food=clamp(state.food+3,0,100);state.morale=clamp(state.morale-2,0,100)}
+    if(a==='plant_trees'){state.wood=clamp(state.wood+6,0,100)}
+    if(a==='explore'){state.knowledge=clamp(state.knowledge+5,0,100)}
+    if(a==='celebrate'){state.morale=clamp(state.morale+8,0,100);state.food=clamp(state.food-3,0,100)}
+    if(a==='study_artifact'&&state.artifact){state.knowledge=clamp(state.knowledge+8,0,100)}
+  }
+  state.recentDecisions=ds.map(d=>({year:state.year,action:d.action,reason:d.reason||''})).concat(state.recentDecisions).slice(0,8);
+  if(obj.government)state.government=String(obj.government).slice(0,60);
+  if(obj.event?.title)addHistory(obj.event.title,String(obj.event.description||'The civilization changes course.'),'ai');
+  if(obj.era?.change&&obj.era.name)newEra(obj.era.name);
+  syncCitizens();updateUI();scheduleSave();
+}
+setInterval(()=>askDeepSeek(false),5000);
+
+// ---------- UI ----------
+function renderHistory(){
+  const box=$('#historyList');if(!box)return;
+  box.innerHTML=state.history.map(e=>`<div class="event"><div class="year">Year ${e.year} · ${e.kind}</div><b>${escapeHtml(e.title)}</b><p>${escapeHtml(e.text)}</p></div>`).join('');
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+renderHistory();
+
+$('#historyBtn').onclick=()=>$('#chronicle').classList.toggle('open');
+$('#closeHistory').onclick=()=>$('#chronicle').classList.remove('open');
+$('#pauseBtn').onclick=togglePause;
+function togglePause(){state.paused=!state.paused;$('#pauseBtn').textContent=state.paused?'▶':'Ⅱ';$('#pauseBtn').classList.toggle('active',state.paused);scheduleSave()}
+addEventListener('keydown',e=>{if(e.code==='Space'&&!/INPUT|TEXTAREA/.test(document.activeElement.tagName)){e.preventDefault();togglePause()}})
+const speedSelect=$('#speedSelect');
+if(![...speedSelect.options].some(o=>+o.value===+state.speed))state.speed=1;
+speedSelect.value=String(state.speed);
+speedSelect.onchange=()=>{state.speed=clamp(+speedSelect.value||1,1,10000);toast('Simulation speed: '+state.speed.toLocaleString()+'×',1400);scheduleSave()};
+$('#fitBtn').onclick=()=>{fitBottle();toast('Camera reset. It is free-fly again as soon as you move.',1400)};
+
+$$('#powers button').forEach(b=>b.onclick=()=>{
+  const p=b.dataset.power;if(p==='custom'){$('#customModal').classList.add('open');return}
+  state.currentPower=p;$$('#powers button').forEach(x=>x.classList.toggle('sel',x===b));
+  if(p!=='observe')toast('Click the land to use '+b.textContent.trim()+'.');
+});
+$('#applyCustom').onclick=()=>{
+  const text=$('#customText').value.trim();if(!text)return;
+  addHistory('An Unexplained Intervention',text,'god');state.pendingEvents.unshift({year:state.year,title:'Unexplained intervention',description:text});$('#customText').value='';$('#customModal').classList.remove('open');toast('The event is now part of this world.');askDeepSeek(true);
+};
+$$('[data-close]').forEach(b=>b.onclick=()=>$('#'+b.dataset.close).classList.remove('open'));
+$$('.modalWrap').forEach(m=>m.addEventListener('pointerdown',e=>{if(e.target===m)m.classList.remove('open')}));
+
+$('#settingsBtn').onclick=()=>{
+  $('#apiKey').value=apiKey;$('#modelSel').value=settings.model;$('#aiInterval').value=settings.aiInterval;$('#detailSel').value=settings.detail;$('#soundSel').value=settings.sound;
+  $('#settingsModal').classList.add('open');
+};
+$('#saveSettings').onclick=()=>{
+  apiKey=$('#apiKey').value.trim();settings.model=$('#modelSel').value;settings.aiInterval=clamp(+$('#aiInterval').value||75,20,600);settings.detail=$('#detailSel').value;settings.sound=$('#soundSel').value;
+  localStorage.setItem('civ.settings',JSON.stringify(settings));localStorage.setItem('civ.deepseekKey',apiKey);$('#settingsModal').classList.remove('open');
+  setAI(apiKey?'DeepSeek ready':'Local mind',apiKey?'live':'');toast(apiKey?'DeepSeek connected. It will make the next strategic decision shortly.':'Saved. The civilization will use its local simulation mind.');
+  if(apiKey)askDeepSeek(true);
+};
+$('#resetBtn').onclick=()=>{
+  if(!confirm('Reset this civilization and erase its local history?'))return;
+  localStorage.removeItem('civ.world');location.reload();
+};
+
+$('#timelineRange').oninput=e=>{
+  const i=+e.target.value,s=state.snapshots[i];if(!s)return;
+  const live=i===state.snapshots.length-1;
+  $('#timelineLabel').textContent=live?`Live — Year ${state.year}`:`Archive — Year ${s.year}`;
+  if(!live)toast(`Year ${s.year}: population ${s.population}, food ${Math.round(s.food)}%, water ${Math.round(s.water)}%`,1800);
+};
+
+if(apiKey)setAI('DeepSeek ready','live');else setAI('Local mind');
+if(!hadSave)toast('Your civilization has begun. Add DeepSeek in ⚙ when you want it to develop its own strategy.',4200);
+else toast('Civilization restored from this browser.',2200);
+
+// title subtle state
+setInterval(()=>{document.title=`Year ${state.year} · ${fmt(state.population)} people · Civilization in a Bottle`},3000);
+
+})();
+</script>
 </body>
 </html>
